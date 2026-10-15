@@ -24,30 +24,46 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.gamevault.data.allGames
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.gamevault.model.Game
 import com.example.gamevault.ui.components.EmptyState
 import com.example.gamevault.ui.components.InfoCard
 import com.example.gamevault.ui.components.SectionHeader
+import com.example.gamevault.ui.previewGames
 import com.example.gamevault.ui.theme.GameVaultTheme
 import com.example.gamevault.ui.theme.Spacing
+import com.example.gamevault.viewmodel.GameViewModel
+
+@Composable
+fun GameDetailRoute(
+    viewModel: GameViewModel,
+    gameId: Int,
+    onBackClick: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    GameDetailScreen(
+        game = viewModel.getGame(gameId),
+        isFavourite = gameId in uiState.favouriteIds,
+        onBackClick = onBackClick,
+        onToggleFavourite = { viewModel.onFavouriteClick(gameId) }
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameDetailScreen(
-    gameId: Int,
+    game: Game?,
     isFavourite: Boolean,
     onBackClick: () -> Unit,
     onToggleFavourite: () -> Unit
 ) {
-    // Find the game using the ID that came from navigation.
-    val game = allGames.find { it.id == gameId }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -126,7 +142,7 @@ fun GameDetailScreen(
 @Composable
 fun GameDetailScreenPreview() {
     GameVaultTheme {
-        GameDetailScreen(gameId = 5, isFavourite = true, onBackClick = {}, onToggleFavourite = {})
+        GameDetailScreen(game = previewGames[1], isFavourite = true, onBackClick = {}, onToggleFavourite = {})
     }
 }
 
@@ -134,6 +150,14 @@ fun GameDetailScreenPreview() {
 @Composable
 fun GameDetailScreenDarkPreview() {
     GameVaultTheme(darkTheme = true) {
-        GameDetailScreen(gameId = 2, isFavourite = false, onBackClick = {}, onToggleFavourite = {})
+        GameDetailScreen(game = previewGames[2], isFavourite = false, onBackClick = {}, onToggleFavourite = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun GameDetailScreenNotFoundPreview() {
+    GameVaultTheme {
+        GameDetailScreen(game = null, isFavourite = false, onBackClick = {}, onToggleFavourite = {})
     }
 }

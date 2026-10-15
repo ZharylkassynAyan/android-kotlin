@@ -19,26 +19,43 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.gamevault.data.allGames
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.gamevault.ui.components.EmptyState
 import com.example.gamevault.ui.components.GameBottomBar
 import com.example.gamevault.ui.components.GameCard
 import com.example.gamevault.ui.components.SectionHeader
+import com.example.gamevault.ui.previewGames
 import com.example.gamevault.ui.theme.GameVaultTheme
 import com.example.gamevault.ui.theme.Spacing
+import com.example.gamevault.viewmodel.GameUiState
+import com.example.gamevault.viewmodel.GameViewModel
+
+@Composable
+fun FavouritesRoute(
+    viewModel: GameViewModel,
+    onBackClick: () -> Unit,
+    onGameClick: (Int) -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    FavouritesScreen(
+        uiState = uiState,
+        onBackClick = onBackClick,
+        onGameClick = onGameClick,
+        onFavouriteClick = viewModel::onFavouriteClick
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FavouritesScreen(
-    favouriteIds: List<Int>,
+    uiState: GameUiState,
     onBackClick: () -> Unit,
     onGameClick: (Int) -> Unit,
-    onToggleFavourite: (Int) -> Unit
+    onFavouriteClick: (Int) -> Unit
 ) {
-    val favouriteGames = allGames.filter { favouriteIds.contains(it.id) }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -53,7 +70,7 @@ fun FavouritesScreen(
         bottomBar = {
             GameBottomBar(
                 isLibrarySelected = false,
-                favouriteCount = favouriteIds.size,
+                favouriteCount = uiState.favouriteIds.size,
                 onLibraryClick = onBackClick,
                 onFavouritesClick = {}
             )
@@ -67,7 +84,7 @@ fun FavouritesScreen(
             SectionHeader(text = "Your favourite games")
             Spacer(modifier = Modifier.height(Spacing.sm))
 
-            if (favouriteGames.isEmpty()) {
+            if (uiState.favouriteGames.isEmpty()) {
                 EmptyState(
                     icon = Icons.Default.Favorite,
                     title = "No favourites yet",
@@ -79,12 +96,12 @@ fun FavouritesScreen(
                     verticalArrangement = Arrangement.spacedBy(Spacing.md),
                     contentPadding = PaddingValues(bottom = Spacing.md)
                 ) {
-                    items(favouriteGames, key = { it.id }) { game ->
+                    items(uiState.favouriteGames, key = { it.id }) { game ->
                         GameCard(
                             game = game,
                             isFavourite = true,
                             onClick = { onGameClick(game.id) },
-                            onFavouriteClick = { onToggleFavourite(game.id) }
+                            onFavouriteClick = { onFavouriteClick(game.id) }
                         )
                     }
                 }
@@ -95,22 +112,22 @@ fun FavouritesScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun FavouritesScreenPreview() {
+fun FavouritesContentPreview() {
     GameVaultTheme {
         FavouritesScreen(
-            favouriteIds = listOf(1, 5, 9),
-            onBackClick = {}, onGameClick = {}, onToggleFavourite = {}
+            uiState = GameUiState(isLoading = false, favouriteGames = previewGames, favouriteIds = setOf(1, 2, 3)),
+            onBackClick = {}, onGameClick = {}, onFavouriteClick = {}
         )
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun FavouritesScreenEmptyDarkPreview() {
+fun FavouritesEmptyDarkPreview() {
     GameVaultTheme(darkTheme = true) {
         FavouritesScreen(
-            favouriteIds = emptyList(),
-            onBackClick = {}, onGameClick = {}, onToggleFavourite = {}
+            uiState = GameUiState(isLoading = false),
+            onBackClick = {}, onGameClick = {}, onFavouriteClick = {}
         )
     }
 }

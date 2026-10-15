@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,7 +28,9 @@ fun EmptyState(
     icon: ImageVector,
     title: String,
     message: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    actionText: String? = null,
+    onActionClick: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -57,6 +60,10 @@ fun EmptyState(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
+        if (actionText != null) {
+            Spacer(modifier = Modifier.height(Spacing.md))
+            Button(onClick = onActionClick) { Text(actionText) }
+        }
     }
 }
 
@@ -68,6 +75,19 @@ fun EmptyStatePreview() {
             icon = Icons.Default.Favorite,
             title = "No favourites yet",
             message = "Tap the heart on a game to save it here."
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun EmptyStateWithButtonPreview() {
+    GameVaultTheme(darkTheme = true) {
+        EmptyState(
+            icon = Icons.Default.Favorite,
+            title = "Something went wrong",
+            message = "Could not load games.",
+            actionText = "Retry"
         )
     }
 }

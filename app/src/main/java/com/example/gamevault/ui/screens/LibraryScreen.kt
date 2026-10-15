@@ -1,6 +1,7 @@
 package com.example.gamevault.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -13,7 +14,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -22,48 +25,61 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.gamevault.data.allGames
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.gamevault.ui.components.EmptyState
 import com.example.gamevault.ui.components.GameBottomBar
 import com.example.gamevault.ui.components.GameCard
 import com.example.gamevault.ui.components.GenreChip
 import com.example.gamevault.ui.components.SectionHeader
+import com.example.gamevault.ui.previewGames
 import com.example.gamevault.ui.theme.GameVaultTheme
 import com.example.gamevault.ui.theme.Spacing
+import com.example.gamevault.viewmodel.GameUiState
+import com.example.gamevault.viewmodel.GameViewModel
 
+// ROUTE: the only place that knows the ViewModel.
+@Composable
+fun LibraryRoute(
+    viewModel: GameViewModel,
+    onGameClick: (Int) -> Unit,
+    onFavouritesClick: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    LibraryScreen(
+        uiState = uiState,
+        onSearchChange = viewModel::onSearchChange,
+        onGenreSelected = viewModel::onGenreSelected,
+        onFavouriteClick = viewModel::onFavouriteClick,
+        onGameClick = onGameClick,
+        onRetry = viewModel::onRetry,
+        onFavouritesTabClick = onFavouritesClick
+    )
+}
+
+// SCREEN: stateless. Gets state + lambdas, no ViewModel, no logic.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
-    favouriteIds: List<Int>,
+    uiState: GameUiState,
+    onSearchChange: (String) -> Unit,
+    onGenreSelected: (String) -> Unit,
+    onFavouriteClick: (Int) -> Unit,
     onGameClick: (Int) -> Unit,
-    onToggleFavourite: (Int) -> Unit,
-    onFavouritesClick: () -> Unit
+    onRetry: () -> Unit,
+    onFavouritesTabClick: () -> Unit
 ) {
-    var searchText by remember { mutableStateOf("") }
-    var selectedGenre by remember { mutableStateOf("All") }
-
-    val genres = listOf("All") + allGames.map { it.genre }.distinct()
-
-    val filteredGames = allGames.filter { game ->
-        val genreMatches = selectedGenre == "All" || game.genre == selectedGenre
-        val searchMatches = game.title.contains(searchText, ignoreCase = true)
-        genreMatches && searchMatches
-    }
-
     Scaffold(
         topBar = { TopAppBar(title = { Text("GameVault") }) },
         bottomBar = {
             GameBottomBar(
                 isLibrarySelected = true,
-                favouriteCount = favouriteIds.size,
+                favouriteCount = uiState.favouriteIds.size,
                 onLibraryClick = {},
-                onFavouritesClick = onFavouritesClick
+                onFavouritesClick = onFavouritesTabClick
             )
         }
     ) { innerPadding ->
@@ -73,8 +89,8 @@ fun LibraryScreen(
                 .padding(horizontal = Spacing.md)
         ) {
             OutlinedTextField(
-                value = searchText,
-                onValueChange = { searchText = it },
+                value = uiState.searchQuery,
+                onValueChange = onSearchChange,
                 placeholder = { Text("Search games") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
                 singleLine = true,
@@ -86,11 +102,11 @@ fun LibraryScreen(
             SectionHeader(text = "Genres")
 
             LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                items(genres) { genre ->
+                items(uiState.genres) { genre ->
                     GenreChip(
                         text = genre,
-                        selected = genre == selectedGenre,
-                        onClick = { selectedGenre = genre }
+                        selected = genre == uiState.selectedGenre,
+                        onClick = { onGenreSelected(genre) }
                     )
                 }
             }
@@ -99,25 +115,43 @@ fun LibraryScreen(
             SectionHeader(text = "All games")
             Spacer(modifier = Modifier.height(Spacing.sm))
 
-            if (filteredGames.isEmpty()) {
-                EmptyState(
-                    icon = Icons.Default.Search,
-                    title = "No games found",
-                    message = "Try a different search or pick another genre.",
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(Spacing.md),
-                    contentPadding = PaddingValues(bottom = Spacing.md)
-                ) {
-                    items(filteredGames, key = { it.id }) { game ->
-                        GameCard(
-                            game = game,
-                            isFavourite = favouriteIds.contains(game.id),
-                            onClick = { onGameClick(game.id) },
-                            onFavouriteClick = { onToggleFavourite(game.id) }
-                        )
+            when {
+                uiState.isLoading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+                uiState.errorMessage != null -> {
+                    EmptyState(
+                        icon = Icons.Default.Info,
+                        title = "Something went wrong",
+                        message = uiState.errorMessage,
+                        modifier = Modifier.fillMaxSize(),
+                        actionText = "Retry",
+                        onActionClick = onRetry
+                    )
+                }
+                uiState.games.isEmpty() -> {
+                    EmptyState(
+                        icon = Icons.Default.Search,
+                        title = "No games found",
+                        message = "Try a different search or pick another genre.",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                        contentPadding = PaddingValues(bottom = Spacing.md)
+                    ) {
+                        items(uiState.games, key = { it.id }) { game ->
+                            GameCard(
+                                game = game,
+                                isFavourite = game.id in uiState.favouriteIds,
+                                onClick = { onGameClick(game.id) },
+                                onFavouriteClick = { onFavouriteClick(game.id) }
+                            )
+                        }
                     }
                 }
             }
@@ -125,28 +159,42 @@ fun LibraryScreen(
     }
 }
 
-@Preview(showBackground = true)
+// ---------- Previews: fake UiState objects, no ViewModel ----------
+private val contentState = GameUiState(
+    isLoading = false,
+    games = previewGames,
+    genres = listOf("All", "Action RPG", "Roguelike"),
+    favouriteIds = setOf(1)
+)
+
 @Composable
-fun LibraryScreenPreview() {
-    GameVaultTheme {
+private fun PreviewLibrary(state: GameUiState, darkTheme: Boolean = false) {
+    GameVaultTheme(darkTheme = darkTheme) {
         LibraryScreen(
-            favouriteIds = listOf(1, 3),
-            onGameClick = {},
-            onToggleFavourite = {},
-            onFavouritesClick = {}
+            uiState = state,
+            onSearchChange = {}, onGenreSelected = {}, onFavouriteClick = {},
+            onGameClick = {}, onRetry = {}, onFavouritesTabClick = {}
         )
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun LibraryScreenDarkPreview() {
-    GameVaultTheme(darkTheme = true) {
-        LibraryScreen(
-            favouriteIds = listOf(1, 3),
-            onGameClick = {},
-            onToggleFavourite = {},
-            onFavouritesClick = {}
-        )
-    }
-}
+fun LibraryLoadingPreview() = PreviewLibrary(GameUiState(isLoading = true))
+
+@Preview(showBackground = true)
+@Composable
+fun LibraryContentPreview() = PreviewLibrary(contentState)
+
+@Preview(showBackground = true)
+@Composable
+fun LibraryEmptyPreview() = PreviewLibrary(contentState.copy(games = emptyList(), searchQuery = "zzz"))
+
+@Preview(showBackground = true)
+@Composable
+fun LibraryErrorPreview() =
+    PreviewLibrary(GameUiState(isLoading = false, errorMessage = "Could not load games."))
+
+@Preview(showBackground = true)
+@Composable
+fun LibraryContentDarkPreview() = PreviewLibrary(contentState, darkTheme = true)

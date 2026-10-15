@@ -1,39 +1,30 @@
 package com.example.gamevault.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.gamevault.ui.screens.FavouritesScreen
-import com.example.gamevault.ui.screens.GameDetailScreen
-import com.example.gamevault.ui.screens.LibraryScreen
+import com.example.gamevault.ui.screens.FavouritesRoute
+import com.example.gamevault.ui.screens.GameDetailRoute
+import com.example.gamevault.ui.screens.LibraryRoute
+import com.example.gamevault.viewmodel.GameViewModel
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    // Shared favourites state: Library, Details and Favourites all read this one list.
-    val favouriteIds = remember { mutableStateListOf<Int>() }
-
-    fun toggleFavourite(id: Int) {
-        if (favouriteIds.contains(id)) {
-            favouriteIds.remove(id)
-        } else {
-            favouriteIds.add(id)
-        }
-    }
+    // One ViewModel for the whole app. Survives rotation.
+    val viewModel: GameViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = "library") {
 
         composable("library") {
-            LibraryScreen(
-                favouriteIds = favouriteIds,
+            LibraryRoute(
+                viewModel = viewModel,
                 onGameClick = { id -> navController.navigate("detail/$id") },
-                onToggleFavourite = { id -> toggleFavourite(id) },
                 onFavouritesClick = {
                     navController.navigate("favourites") { launchSingleTop = true }
                 }
@@ -41,11 +32,10 @@ fun AppNavigation() {
         }
 
         composable("favourites") {
-            FavouritesScreen(
-                favouriteIds = favouriteIds,
+            FavouritesRoute(
+                viewModel = viewModel,
                 onBackClick = { navController.popBackStack() },
-                onGameClick = { id -> navController.navigate("detail/$id") },
-                onToggleFavourite = { id -> toggleFavourite(id) }
+                onGameClick = { id -> navController.navigate("detail/$id") }
             )
         }
 
@@ -54,11 +44,10 @@ fun AppNavigation() {
             arguments = listOf(navArgument("gameId") { type = NavType.IntType })
         ) { backStackEntry ->
             val gameId = backStackEntry.arguments?.getInt("gameId") ?: 0
-            GameDetailScreen(
+            GameDetailRoute(
+                viewModel = viewModel,
                 gameId = gameId,
-                isFavourite = favouriteIds.contains(gameId),
-                onBackClick = { navController.popBackStack() },
-                onToggleFavourite = { toggleFavourite(gameId) }
+                onBackClick = { navController.popBackStack() }
             )
         }
     }

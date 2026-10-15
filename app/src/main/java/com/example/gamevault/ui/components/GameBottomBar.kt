@@ -34,7 +34,7 @@ fun GameBottomBar(
                 BadgedBox(
                     badge = {
                         if (favouriteCount > 0) {
-                            Badge { Text("$favouriteCount") }
+                            Badge { Text(favouriteCount.toString()) }
                         }
                     }
                 ) {

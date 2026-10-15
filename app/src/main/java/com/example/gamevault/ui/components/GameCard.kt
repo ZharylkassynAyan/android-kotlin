@@ -29,8 +29,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.gamevault.data.allGames
 import com.example.gamevault.model.Game
+import com.example.gamevault.ui.previewGames
 import com.example.gamevault.ui.theme.GameVaultTheme
 import com.example.gamevault.ui.theme.Spacing
 
@@ -105,7 +105,7 @@ fun GameCard(
 fun GameCardPreview() {
     GameVaultTheme {
         GameCard(
-            game = allGames[4],   // long title
+            game = previewGames[1],   // long title
             isFavourite = true,
             onClick = {},
             onFavouriteClick = {},
@@ -119,7 +119,7 @@ fun GameCardPreview() {
 fun GameCardDarkPreview() {
     GameVaultTheme(darkTheme = true) {
         GameCard(
-            game = allGames[1],
+            game = previewGames[2],
             isFavourite = false,
             onClick = {},
             onFavouriteClick = {},
